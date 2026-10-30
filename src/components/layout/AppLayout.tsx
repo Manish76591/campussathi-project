@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { RoleSwitcher } from '../ui/RoleSwitcher';
 import { NotificationDrawer } from '../ui/NotificationDrawer';
@@ -32,6 +32,10 @@ export const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
 
   const handleLogout = () => {
     logout();

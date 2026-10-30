@@ -71,7 +71,7 @@ export const FeaturesPage: React.FC = () => {
       title: 'Multi-Tenant Security & Governance',
       icon: ShieldCheck,
       items: [
-        'PostgreSQL Row Level Security (RLS) guaranteeing total institutional isolation',
+        'Multi-tenant institutional isolation ensuring college records remain private',
         'Platform Super Administrator dashboard to approve/reject college applications',
         'Comprehensive security audit logging for privileged administrative operations',
         'Private storage buckets for sensitive student and resolution evidence',

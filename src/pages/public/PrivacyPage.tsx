@@ -164,7 +164,7 @@ export const PrivacyPage: React.FC = () => {
             <ul className="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-300 text-sm">
               <li>End-to-end TLS 1.3 encryption in transit for all web traffic and API endpoints.</li>
               <li>AES-256 encryption at rest for cloud databases and document file repositories.</li>
-              <li>PostgreSQL Row Level Security (RLS) guaranteeing strict multi-tenant barrier between different academic institutions.</li>
+              <li>Database-level institutional barriers ensuring strict multi-tenant separation between different academic institutions.</li>
               <li>Data Retention: Academic records are retained for the duration of the student's program and as mandated by institutional statutory audit rules, after which records are archived or anonymized.</li>
             </ul>
           </section>

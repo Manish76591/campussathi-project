@@ -910,5 +910,51 @@ describe('CampusSaathi Core Platform Engine Tests', () => {
       expect(res.report?.browser_info).toContain('iOS 17.4');
     });
   });
+
+  describe('20. Authentication & Credentials Security Verification', () => {
+    it('authenticates demo persona with valid default password', () => {
+      const res = campusStore.authenticateUser('amanpreet.cse@khalsa.edu.in', 'password123');
+      expect(res.success).toBe(true);
+      expect(res.user?.role).toBe('student');
+      expect(res.user?.full_name).toBe('Amanpreet Kaur');
+    });
+
+    it('rejects demo persona login when incorrect password is provided', () => {
+      const res = campusStore.authenticateUser('amanpreet.cse@khalsa.edu.in', 'wrongpass999');
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('Invalid password');
+    });
+
+    it('rejects authentication for non-existent unregistered emails', () => {
+      const res = campusStore.authenticateUser('nonexistent.ghost@nowhere.in', 'somepassword');
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('No account found');
+    });
+
+    it('registers a new student with password and verifies login authentication', () => {
+      const reg = campusStore.registerUserWithRole({
+        role: 'student',
+        full_name: 'Simranjeet Singh',
+        email: 'simranjeet.bca@khalsa.edu.in',
+        password: 'SecurePassword@2026',
+        institution_id: 'inst-1',
+        roll_no: 'KC-BCA-2026-99',
+        semester: 2,
+        course_name: 'Bachelor of Computer Applications',
+      });
+
+      expect(reg.success).toBe(true);
+
+      // Successful auth with registered password
+      const authSuccess = campusStore.authenticateUser('simranjeet.bca@khalsa.edu.in', 'SecurePassword@2026');
+      expect(authSuccess.success).toBe(true);
+      expect(authSuccess.user?.full_name).toBe('Simranjeet Singh');
+
+      // Failed auth with wrong password
+      const authFail = campusStore.authenticateUser('simranjeet.bca@khalsa.edu.in', 'WrongPassword123');
+      expect(authFail.success).toBe(false);
+      expect(authFail.message).toContain('Incorrect password');
+    });
+  });
 });
 

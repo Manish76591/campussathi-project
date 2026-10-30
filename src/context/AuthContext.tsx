@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole, Institution } from '../types';
 import { DEMO_USERS } from '../lib/mockData';
 import { campusStore } from '../lib/store';
+import { supabase, isLiveSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -12,6 +13,8 @@ interface AuthContextType {
   loginAsDemoRole: (roleKey: string) => void;
   logout: () => void;
   isDemoMode: boolean;
+  authError: string | null;
+  isLoadingAuth: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [institution, setInstitution] = useState<Institution | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -49,41 +54,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const login = async (email: string, _pass: string): Promise<boolean> => {
-    // Find matching demo user by email
-    const matched = Object.values(DEMO_USERS).find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-    );
+  useEffect(() => {
+    if (!isLiveSupabaseConfigured) return;
 
-    if (matched) {
-      setUser(matched);
-      return true;
-    }
+    // Listen to Supabase auth state change
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && !localStorage.getItem(AUTH_STORAGE_KEY)) {
+        const profile: UserProfile = {
+          id: session.user.id,
+          email: session.user.email || '',
+          full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+          role: (session.user.user_metadata?.role as UserRole) || 'student',
+          institution_id: session.user.user_metadata?.institution_id || 'inst-1',
+          institution_name: session.user.user_metadata?.institution_name || 'Khalsa College of Engineering & Technology',
+          is_active: true,
+          created_at: session.user.created_at,
+        };
+        setUser(profile);
+      }
+    });
 
-    // If new email, create a default student session
-    const newUser: UserProfile = {
-      id: `usr-${Date.now()}`,
-      email: email.trim(),
-      full_name: email.split('@')[0],
-      role: 'student',
-      institution_id: 'inst-1',
-      institution_name: 'Khalsa College of Engineering & Technology',
-      is_active: true,
-      created_at: new Date().toISOString(),
+    return () => {
+      authListener?.subscription.unsubscribe();
     };
-    setUser(newUser);
-    return true;
+  }, []);
+
+  const login = async (email: string, pass: string): Promise<boolean> => {
+    setAuthError(null);
+    setIsLoadingAuth(true);
+
+    try {
+      const cleanEmail = email.trim();
+      const cleanPass = pass.trim();
+
+      if (!cleanEmail || !cleanPass) {
+        setAuthError('Email and password are required.');
+        setIsLoadingAuth(false);
+        return false;
+      }
+
+      // 1. Authenticate with local campus store (demo personas and registered users)
+      const storeAuth = campusStore.authenticateUser(cleanEmail, cleanPass);
+      if (storeAuth.success && storeAuth.user) {
+        setUser(storeAuth.user);
+        setAuthError(null);
+        setIsLoadingAuth(false);
+        return true;
+      }
+
+      // 2. If password explicitly rejected by store auth
+      if (!storeAuth.success && storeAuth.message && storeAuth.message.includes('password')) {
+        setAuthError(storeAuth.message);
+        setIsLoadingAuth(false);
+        return false;
+      }
+
+      // 3. Authenticate with live Supabase Auth if configured
+      if (isLiveSupabaseConfigured) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: cleanPass,
+        });
+
+        if (error) {
+          setAuthError(error.message);
+          setIsLoadingAuth(false);
+          return false;
+        }
+
+        if (data.user) {
+          const profile: UserProfile = {
+            id: data.user.id,
+            email: data.user.email || cleanEmail,
+            full_name: data.user.user_metadata?.full_name || cleanEmail.split('@')[0],
+            role: (data.user.user_metadata?.role as UserRole) || 'student',
+            institution_id: data.user.user_metadata?.institution_id || 'inst-1',
+            institution_name: data.user.user_metadata?.institution_name || 'Khalsa College of Engineering & Technology',
+            is_active: true,
+            created_at: data.user.created_at,
+          };
+          setUser(profile);
+          setAuthError(null);
+          setIsLoadingAuth(false);
+          return true;
+        }
+      }
+
+      // 4. Default rejection if no matching credentials found
+      setAuthError('Invalid credentials. Please verify your email and password, or choose a demo persona.');
+      setIsLoadingAuth(false);
+      return false;
+    } catch (err: any) {
+      setAuthError(err?.message || 'Authentication failed. Please check network.');
+      setIsLoadingAuth(false);
+      return false;
+    }
   };
 
   const loginAsDemoRole = (roleKey: string) => {
     if (DEMO_USERS[roleKey]) {
       setUser(DEMO_USERS[roleKey]);
+      setAuthError(null);
     }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    if (isLiveSupabaseConfigured) {
+      supabase.auth.signOut().catch((e) => console.warn('[Supabase Auth] Sign out error:', e));
+    }
   };
 
   return (
@@ -97,6 +177,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsDemoRole,
         logout,
         isDemoMode: true,
+        authError,
+        isLoadingAuth,
       }}
     >
       {children}

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
-import { isLiveSupabaseConfigured } from '../../lib/supabase';
+import { supabase, isLiveSupabaseConfigured } from '../../lib/supabase';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -14,7 +14,17 @@ export const ForgotPasswordPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
+    if (isLiveSupabaseConfigured && email.trim()) {
+      try {
+        await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/login`,
+        });
+      } catch (err) {
+        console.warn('[Supabase Auth] resetPasswordForEmail error:', err);
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 600));
+    }
     setLoading(false);
     setSubmitted(true);
   };

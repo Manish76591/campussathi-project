@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login, loginAsDemoRole } = useAuth();
+  const { login, loginAsDemoRole, authError } = useAuth();
   const navigate = useNavigate();
 
   // Institution selection state (Multi-Tenant personalization)
@@ -77,19 +77,18 @@ export const LoginPage: React.FC = () => {
     try {
       const ok = await login(email, password);
       if (ok) {
-        const found = Object.values(DEMO_USERS).find(
-          (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-        );
-        if (found?.role === 'warden') navigate('/app/warden');
-        else if (found?.role === 'teacher') navigate('/app/teacher');
-        else if (found?.role === 'parent') navigate('/app/parent');
-        else if (found?.role === 'maintenance') navigate('/app/maintenance');
-        else if (found?.role === 'institution_admin') navigate('/app/admin');
-        else if (found?.role === 'mess_manager') navigate('/app/mess');
-        else if (found?.role === 'platform_admin') navigate('/app/superadmin');
+        const found = campusStore.getUserByEmail(email);
+        const targetRole = found?.role || 'student';
+        if (targetRole === 'warden') navigate('/app/warden');
+        else if (targetRole === 'teacher') navigate('/app/teacher');
+        else if (targetRole === 'parent') navigate('/app/parent');
+        else if (targetRole === 'maintenance') navigate('/app/maintenance');
+        else if (targetRole === 'institution_admin') navigate('/app/admin');
+        else if (targetRole === 'mess_manager') navigate('/app/mess');
+        else if (targetRole === 'platform_admin') navigate('/app/superadmin');
         else navigate('/app/student');
       } else {
-        setError('Invalid credentials or unapproved institution membership.');
+        setError(authError || 'Invalid credentials or unapproved institution membership.');
       }
     } catch (err: any) {
       setError(err?.message || 'Login failed. Please check network.');

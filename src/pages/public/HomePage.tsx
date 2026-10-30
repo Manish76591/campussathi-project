@@ -23,6 +23,7 @@ import {
   ChevronDown,
   BarChart3,
   Cloud,
+  FileText,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { campusStore } from '../../lib/store';
@@ -547,48 +548,66 @@ export const HomePage: React.FC = () => {
         <div className="bg-[var(--card-background)] backdrop-blur-2xl text-[var(--card-foreground)] rounded-3xl p-8 sm:p-12 border border-[var(--card-border)] shadow-2xl relative overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 dark:bg-cyan-500/20 border border-blue-400/30 dark:border-cyan-400/30 text-blue-700 dark:text-cyan-300 text-xs font-medium">
-                <Lock className="w-3.5 h-3.5" /> Zero Data Leakage Guarantee
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 dark:bg-cyan-500/20 border border-blue-400/30 dark:border-cyan-400/30 text-blue-700 dark:text-cyan-300 text-xs font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" /> Institutional Data Protection
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--card-foreground)]">
-                PostgreSQL Row Level Security (RLS) Multi-Tenant Engine
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--card-foreground)] tracking-tight">
+                Enterprise Multi-College Privacy & Security Architecture
               </h2>
               <p className="text-xs sm:text-sm text-[var(--muted-foreground)] leading-relaxed">
-                CampusSaathi enforces true database-level tenant isolation. A user or administrator at College A cannot access College B's grievances, student records, or attendance logs by manipulating URLs, query parameters, or request payloads.
+                CampusSaathi is built with multi-institution isolation at its core. Each college operates in its own protected space, ensuring student grievances, academic marks, attendance records, and faculty data remain strictly confidential.
               </p>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="p-3 rounded-xl bg-[var(--nested-surface)] border border-[var(--card-border)] text-xs">
-                  <div className="font-semibold text-blue-600 dark:text-cyan-300">Private Object Storage</div>
-                  <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">Signed URLs for problem and resolution photo evidence</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-[var(--nested-surface)] border border-[var(--card-border)] text-xs">
+                  <div className="font-semibold text-blue-600 dark:text-cyan-300 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" /> Strict Tenant Isolation
+                  </div>
+                  <div className="text-[11px] text-[var(--muted-foreground)] mt-1">Institutional records are isolated by verified college membership boundaries.</div>
                 </div>
-                <div className="p-3 rounded-xl bg-[var(--nested-surface)] border border-[var(--card-border)] text-xs">
-                  <div className="font-semibold text-blue-600 dark:text-cyan-300">Approval Guardrails</div>
-                  <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">Parent links and new colleges require verified administrative authorization</div>
+                <div className="p-3.5 rounded-xl bg-[var(--nested-surface)] border border-[var(--card-border)] text-xs">
+                  <div className="font-semibold text-blue-600 dark:text-cyan-300 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Verified Authorizations
+                  </div>
+                  <div className="text-[11px] text-[var(--muted-foreground)] mt-1">Parent linkages and staff provisioning require official PIN and admin approvals.</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-950/80 dark:bg-slate-950/70 backdrop-blur-md rounded-2xl p-6 border border-slate-700/50 dark:border-white/15 space-y-4 font-mono text-xs text-slate-200">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 text-slate-400">
-                <span className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-cyan-400" /> PostgreSQL Policy Inspector
-                </span>
-                <span className="text-[10px] text-cyan-300 uppercase font-bold tracking-wider">ENFORCED</span>
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-[var(--nested-surface)] border border-[var(--card-border)] flex items-start gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--card-foreground)]">Role-Based Access Control (RBAC)</h3>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    Granular permissions across 8 distinct roles ensure students, teachers, wardens, and campus admins only access their authorized tools.
+                  </p>
+                </div>
               </div>
-              <pre className="text-[11px] text-cyan-200 overflow-x-auto leading-relaxed">
-{`CREATE POLICY complaints_isolation_policy
-  ON public.complaints
-  FOR SELECT USING (
-    institution_id = current_user_institution()
-    AND (
-      role IN ('institution_admin', 'warden')
-      OR student_id = auth.uid()
-      OR assigned_to_staff_id = auth.uid()
-    )
-  );`}
-              </pre>
-              <div className="text-[11px] text-slate-300">
-                ✓ Cross-tenant queries automatically evaluated to 0 rows by database kernel.
+
+              <div className="p-4 rounded-2xl bg-[var(--nested-surface)] border border-[var(--card-border)] flex items-start gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--card-foreground)]">DPDP Act 2023 & Privacy Compliance</h3>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    Full alignment with Indian digital personal data regulations, including cookie preferences, explicit consent, and transparent grievance logging.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[var(--nested-surface)] border border-[var(--card-border)] flex items-start gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Server className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--card-foreground)]">Tamper-Evident Audit Logs</h3>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                    Critical operations, status changes, and administrative actions are logged with timestamps and actor credentials for institutional transparency.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

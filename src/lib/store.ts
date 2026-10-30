@@ -72,7 +72,9 @@ import {
   DEMO_SUPPORT_TICKETS,
   DEMO_USER_FEEDBACK,
   DEMO_BUG_REPORTS,
+  DEMO_USERS,
 } from './mockData';
+import { supabase, isLiveSupabaseConfigured } from './supabase';
 
 const STORAGE_KEYS = {
   INSTITUTIONS: 'cs_institutions_v1',
@@ -87,6 +89,7 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: 'cs_audit_logs_v1',
   INVITATIONS: 'cs_invitations_v1',
   USERS: 'cs_registered_users_v1',
+  CREDENTIALS: 'cs_user_credentials_v1',
   COURSES: 'cs_courses_v1',
   SECTIONS: 'cs_sections_v1',
   SUBJECTS: 'cs_subjects_v1',
@@ -232,6 +235,7 @@ class CampusStore {
   private auditLogs: AuditLog[] = loadFromStorage(STORAGE_KEYS.AUDIT_LOGS, DEMO_AUDIT_LOGS);
   private invitations: RoleInvitation[] = loadFromStorage(STORAGE_KEYS.INVITATIONS, DEMO_INVITATIONS);
   private registeredUsers: UserProfile[] = loadFromStorage(STORAGE_KEYS.USERS, []);
+  private credentials: Record<string, string> = loadFromStorage(STORAGE_KEYS.CREDENTIALS, {});
   private courses: Course[] = loadFromStorage(STORAGE_KEYS.COURSES, DEMO_COURSES);
   private sections: Section[] = loadFromStorage(STORAGE_KEYS.SECTIONS, DEMO_SECTIONS);
   private subjects: Subject[] = loadFromStorage(STORAGE_KEYS.SUBJECTS, DEMO_SUBJECTS);
@@ -1001,6 +1005,25 @@ class CampusStore {
     this.registeredUsers.unshift(newUser);
     saveToStorage(STORAGE_KEYS.USERS, this.registeredUsers);
 
+    if (payload.password) {
+      this.credentials[payload.email.trim().toLowerCase()] = payload.password;
+      saveToStorage(STORAGE_KEYS.CREDENTIALS, this.credentials);
+    }
+
+    if (isLiveSupabaseConfigured && payload.password) {
+      supabase.auth.signUp({
+        email: payload.email.trim().toLowerCase(),
+        password: payload.password,
+        options: {
+          data: {
+            full_name: payload.full_name.trim(),
+            role: payload.role,
+            institution_id: payload.institution_id,
+          },
+        },
+      }).catch((e) => console.warn('[Supabase Auth Sync] signUp error:', e));
+    }
+
     // 4. Role-specific record creation
     if (payload.role === 'parent' && payload.student_reference) {
       this.submitParentLinkRequest({
@@ -1029,6 +1052,49 @@ class CampusStore {
       success: true,
       message: `Registration successful! You are authorized as ${payload.role.replace('_', ' ')} at ${institution.name}.`,
       user: newUser,
+    };
+  }
+
+  public getRegisteredUsers(): UserProfile[] {
+    return [...this.registeredUsers];
+  }
+
+  public getUserByEmail(email: string): UserProfile | undefined {
+    const norm = email.trim().toLowerCase();
+    const demo = Object.values(DEMO_USERS).find((u) => u.email.toLowerCase() === norm);
+    if (demo) return demo;
+    return this.registeredUsers.find((u) => u.email.toLowerCase() === norm);
+  }
+
+  public getUserRoleByEmail(email: string): UserRole | undefined {
+    return this.getUserByEmail(email)?.role;
+  }
+
+  public authenticateUser(
+    email: string,
+    pass: string
+  ): { success: boolean; user?: UserProfile; message?: string } {
+    const norm = email.trim().toLowerCase();
+    const demo = Object.values(DEMO_USERS).find((u) => u.email.toLowerCase() === norm);
+    if (demo) {
+      if (!pass || pass.trim() !== 'password123') {
+        return { success: false, message: 'Invalid password. Demo accounts use password123' };
+      }
+      return { success: true, user: demo };
+    }
+
+    const registered = this.registeredUsers.find((u) => u.email.toLowerCase() === norm);
+    if (registered) {
+      const storedPass = this.credentials[norm];
+      if (storedPass && storedPass !== pass) {
+        return { success: false, message: 'Incorrect password for registered account.' };
+      }
+      return { success: true, user: registered };
+    }
+
+    return {
+      success: false,
+      message: 'No account found for this email. Please register your role first.',
     };
   }
 
@@ -2206,6 +2272,33 @@ class CampusStore {
     this.supportTickets.unshift(newTicket);
     saveToStorage(STORAGE_KEYS.SUPPORT_TICKETS, this.supportTickets);
     this.notify();
+
+    if (isLiveSupabaseConfigured) {
+      Promise.resolve(
+        supabase
+          .from('support_tickets')
+          .insert({
+            id: newId,
+            institution_id: newTicket.institution_id || null,
+            name: newTicket.name,
+            email: newTicket.email,
+            phone: newTicket.phone || null,
+            college_name: newTicket.college_name || null,
+            category: newTicket.category,
+            subject: newTicket.subject,
+            description: newTicket.description,
+            attachment_url: newTicket.attachment_url || null,
+            attachment_name: newTicket.attachment_name || null,
+            status: newTicket.status,
+            priority: newTicket.priority,
+          })
+      )
+        .then(({ error }: any) => {
+          if (error) console.warn('[Supabase Sync] support_tickets error:', error.message);
+        })
+        .catch((e: unknown) => console.warn('[Supabase Sync] support_tickets network error:', e));
+    }
+
     return { success: true, id: newId, ticket: newTicket };
   }
 
@@ -2307,6 +2400,29 @@ class CampusStore {
     this.userFeedbacks.unshift(newFeedback);
     saveToStorage(STORAGE_KEYS.USER_FEEDBACK, this.userFeedbacks);
     this.notify();
+
+    if (isLiveSupabaseConfigured) {
+      Promise.resolve(
+        supabase
+          .from('user_feedback')
+          .insert({
+            id: newId,
+            institution_id: newFeedback.institution_id || null,
+            user_name: newFeedback.user_name,
+            user_email: newFeedback.user_email,
+            role: newFeedback.role || 'student',
+            category: newFeedback.category,
+            title: newFeedback.title,
+            comment: newFeedback.comment,
+            rating: newFeedback.rating || 5,
+          })
+      )
+        .then(({ error }: any) => {
+          if (error) console.warn('[Supabase Sync] user_feedback error:', error.message);
+        })
+        .catch((e: unknown) => console.warn('[Supabase Sync] user_feedback network error:', e));
+    }
+
     return { success: true, id: newId, feedback: newFeedback };
   }
 
@@ -2400,6 +2516,33 @@ class CampusStore {
     this.bugReports.unshift(newBug);
     saveToStorage(STORAGE_KEYS.BUG_REPORTS, this.bugReports);
     this.notify();
+
+    if (isLiveSupabaseConfigured) {
+      Promise.resolve(
+        supabase
+          .from('bug_reports')
+          .insert({
+            id: newId,
+            institution_id: newBug.institution_id || null,
+            reporter_name: newBug.reporter_name,
+            reporter_email: newBug.reporter_email,
+            title: newBug.title,
+            category: newBug.category,
+            severity: newBug.severity,
+            steps_to_reproduce: newBug.steps_to_reproduce,
+            expected_behavior: newBug.expected_behavior,
+            actual_behavior: newBug.actual_behavior,
+            browser_info: newBug.browser_info || null,
+            attachment_url: newBug.attachment_url || null,
+            status: newBug.status,
+          })
+      )
+        .then(({ error }: any) => {
+          if (error) console.warn('[Supabase Sync] bug_reports error:', error.message);
+        })
+        .catch((e: unknown) => console.warn('[Supabase Sync] bug_reports network error:', e));
+    }
+
     return { success: true, id: newId, report: newBug };
   }
 
